@@ -390,7 +390,8 @@ h1 {
     font-size: 19px;
     line-height: 2;
     color: var(--texto-tenue);
-    white-space: pre-wrap;
+    white-space: nowrap;
+    overflow-x: auto;
     margin: 0;
 }
 

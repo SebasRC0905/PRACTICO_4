@@ -1,5 +1,6 @@
 const datosTexto = JSON.parse(document.getElementById("texto-datos").textContent);
-const palabras = datosTexto.split(/\s+/).filter(Boolean);
+const oraciones = dividirEnOraciones(datosTexto);
+const palabrasTotales = oraciones.flatMap((oracion) => oracion.split(/\s+/).filter(Boolean));
 
 const contenedorTexto = document.getElementById("texto-prueba");
 const entrada = document.getElementById("entrada-usuario");
@@ -11,13 +12,35 @@ const valorWpm = document.getElementById("valor-wpm");
 const DURACION_SEGUNDOS = 60;
 
 let indiceActual = 0;
+let indiceOracionActual = 0;
+let palabras = [];
 let palabrasCorrectas = 0;
+let palabrasProcesadas = 0;
 let tiempoRestante = DURACION_SEGUNDOS;
 let intervalo = null;
 let pruebaIniciada = false;
 let pruebaTerminada = false;
 
+function dividirEnOraciones(texto) {
+    const partes = texto
+        .split(/(?<=[.!?])\s+/)
+        .map((oracion) => oracion.trim())
+        .filter(Boolean);
+
+    return partes.length > 0 ? partes : [texto.trim()].filter(Boolean);
+}
+
+function obtenerPalabrasActuales() {
+    return oraciones[indiceOracionActual]?.split(/\s+/).filter(Boolean) || [];
+}
+
+function actualizarBarraProgreso() {
+    const porcentaje = palabrasTotales.length > 0 ? (palabrasProcesadas / palabrasTotales.length) * 100 : 0;
+    barraProgreso.style.width = `${Math.min(100, porcentaje)}%`;
+}
+
 function dibujarTexto() {
+    palabras = obtenerPalabrasActuales();
     contenedorTexto.innerHTML = palabras
         .map((palabra, indice) => {
             const letras = palabra
@@ -93,6 +116,20 @@ function finalizarPrueba() {
     });
 }
 
+function avanzarOracion() {
+    indiceActual = 0;
+    indiceOracionActual += 1;
+    entrada.value = "";
+
+    if (indiceOracionActual >= oraciones.length) {
+        finalizarPrueba();
+        return;
+    }
+
+    dibujarTexto();
+    actualizarBarraProgreso();
+}
+
 // Se ejecuta cuando el usuario confirma una palabra con espacio o enter
 function procesarPalabra() {
     const escrita = entrada.value.trim();
@@ -119,11 +156,12 @@ function procesarPalabra() {
     }
 
     indiceActual += 1;
+    palabrasProcesadas += 1;
     entrada.value = "";
-    barraProgreso.style.width = `${(indiceActual / palabras.length) * 100}%`;
+    actualizarBarraProgreso();
 
     if (indiceActual >= palabras.length) {
-        finalizarPrueba();
+        avanzarOracion();
         return;
     }
 
@@ -143,7 +181,7 @@ function retrocederPalabra() {
         letra.classList.remove("correcta", "incorrecta", "cursor");
     });
 
-    barraProgreso.style.width = `${(indiceActual / palabras.length) * 100}%`;
+    actualizarBarraProgreso();
     marcarPalabraActual();
 }
 
@@ -186,4 +224,5 @@ entrada.addEventListener("keydown", (evento) => {
 });
 
 dibujarTexto();
+actualizarBarraProgreso();
 entrada.focus();
