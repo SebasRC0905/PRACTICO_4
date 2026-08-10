@@ -171,6 +171,11 @@ h1 {
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.boton-entrar {
+    background: var(--acento);
+    color: #0a0c12;
+}
+
 .boton-principal:hover {
     transform: translateY(-1px);
     box-shadow: 0 8px 20px rgba(94, 234, 212, 0.2);
