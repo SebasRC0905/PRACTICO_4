@@ -8,8 +8,11 @@ const marcadorTiempo = document.getElementById("tiempo-restante");
 const barraProgreso = document.getElementById("barra-progreso");
 const pantallaResultado = document.getElementById("pantalla-resultado");
 const valorWpm = document.getElementById("valor-wpm");
+const indicadorRacha = document.getElementById("indicador-racha");
+const contadorRacha = document.getElementById("contador-racha");
 
 const DURACION_SEGUNDOS = 60;
+const UMBRAL_RACHA = 4;
 
 let indiceActual = 0;
 let indiceOracionActual = 0;
@@ -20,6 +23,7 @@ let tiempoRestante = DURACION_SEGUNDOS;
 let intervalo = null;
 let pruebaIniciada = false;
 let pruebaTerminada = false;
+let palabrasCorrectasConsecutivas = 0;
 
 function dividirEnOraciones(texto) {
     const partes = texto
@@ -116,10 +120,21 @@ function finalizarPrueba() {
     });
 }
 
+function mostrarRacha() {
+    indicadorRacha.classList.add("activo");
+    contadorRacha.textContent = palabrasCorrectasConsecutivas;
+}
+
+function ocultarRacha() {
+    indicadorRacha.classList.remove("activo");
+    palabrasCorrectasConsecutivas = 0;
+}
+
 function avanzarOracion() {
     indiceActual = 0;
     indiceOracionActual += 1;
     entrada.value = "";
+    ocultarRacha();
 
     if (indiceOracionActual >= oraciones.length) {
         finalizarPrueba();
@@ -152,6 +167,13 @@ function procesarPalabra() {
         if (esCorrecta && !elementoActual.dataset.contada) {
             palabrasCorrectas += 1;
             elementoActual.dataset.contada = "1";
+            palabrasCorrectasConsecutivas += 1;
+
+            if (palabrasCorrectasConsecutivas >= UMBRAL_RACHA) {
+                mostrarRacha();
+            }
+        } else if (!esCorrecta) {
+            ocultarRacha();
         }
     }
 
@@ -181,6 +203,7 @@ function retrocederPalabra() {
         letra.classList.remove("correcta", "incorrecta", "cursor");
     });
 
+    ocultarRacha();
     actualizarBarraProgreso();
     marcarPalabraActual();
 }
