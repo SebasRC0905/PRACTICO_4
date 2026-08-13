@@ -36,26 +36,109 @@ def login():
     return render_template("login.html")
 
 
+def ensure_login_attempts_table():
+    """Crea la tabla LoginAttempts si no existe. Usada para no modificar el archivo database.sql."""
+    conexion = get_connection()
+    try:
+        with conexion.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS LoginAttempts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    usuario_id INT NOT NULL,
+                    intentos_fallidos INT NOT NULL DEFAULT 0,
+                    bloqueado TINYINT(1) NOT NULL DEFAULT 0,
+                    fecha_bloqueo DATETIME NULL,
+                    UNIQUE KEY (usuario_id),
+                    FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                """
+            )
+        conexion.commit()
+    finally:
+        conexion.close()
+
+
 @app.route("/login", methods=["POST"])
 def procesar_login():
     usuario = request.form.get("usuario", "").strip()
     contrasena = request.form.get("contrasena", "")
+
+    # Asegurar que la tabla de intentos exista (no modificamos database.sql)
+    ensure_login_attempts_table()
 
     conexion = get_connection()
     try:
         with conexion.cursor() as cursor:
             cursor.execute("SELECT * FROM Usuario WHERE usuario = %s", (usuario,))
             fila = cursor.fetchone()
+
+            if not fila:
+                # Usuario no existe: respuesta genérica
+                flash("Usuario o contraseña incorrectos")
+                return redirect(url_for("login"))
+
+            # Obtener/crear registro de intentos para este usuario
+            cursor.execute(
+                "SELECT * FROM LoginAttempts WHERE usuario_id = %s",
+                (fila["id"],),
+            )
+            intento = cursor.fetchone()
+
+            if intento and intento.get("bloqueado"):
+                flash("Cuenta bloqueada por intentos fallidos. Contacta al administrador.")
+                return redirect(url_for("login"))
+
+            # Login exitoso: resetear/insertar intento 0
+            if check_password_hash(fila["contrasena"], contrasena):
+                if intento:
+                    cursor.execute(
+                        "UPDATE LoginAttempts SET intentos_fallidos = 0, bloqueado = 0, fecha_bloqueo = NULL WHERE usuario_id = %s",
+                        (fila["id"],),
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO LoginAttempts (usuario_id, intentos_fallidos, bloqueado) VALUES (%s, 0, 0)",
+                        (fila["id"],),
+                    )
+                conexion.commit()
+                session["usuario_id"] = fila["id"]
+                session["usuario"] = fila["usuario"]
+                return redirect(url_for("menu"))
+
+            # Contraseña incorrecta: incrementar
+            nuevos_intentos = (intento["intentos_fallidos"] if intento else 0) + 1
+            if intento:
+                if nuevos_intentos >= 4:
+                    cursor.execute(
+                        "UPDATE LoginAttempts SET intentos_fallidos = %s, bloqueado = 1, fecha_bloqueo = %s WHERE usuario_id = %s",
+                        (nuevos_intentos, datetime.now(), fila["id"]),
+                    )
+                    flash("Demasiados intentos fallidos. La cuenta ha sido bloqueada.")
+                else:
+                    cursor.execute(
+                        "UPDATE LoginAttempts SET intentos_fallidos = %s WHERE usuario_id = %s",
+                        (nuevos_intentos, fila["id"]),
+                    )
+                    flash(f"Usuario o contraseña incorrectos. Intentos {nuevos_intentos}/4")
+            else:
+                # crear fila de intentos
+                bloqueado_flag = 1 if nuevos_intentos >= 4 else 0
+                fecha_b = datetime.now() if bloqueado_flag else None
+                cursor.execute(
+                    "INSERT INTO LoginAttempts (usuario_id, intentos_fallidos, bloqueado, fecha_bloqueo) VALUES (%s, %s, %s, %s)",
+                    (fila["id"], nuevos_intentos, bloqueado_flag, fecha_b),
+                )
+                if bloqueado_flag:
+                    flash("Demasiados intentos fallidos. La cuenta ha sido bloqueada.")
+                else:
+                    flash(f"Usuario o contraseña incorrectos. Intentos {nuevos_intentos}/4")
+
+            conexion.commit()
+            return redirect(url_for("login"))
+
     finally:
         conexion.close()
-
-    if fila and check_password_hash(fila["contrasena"], contrasena):
-        session["usuario_id"] = fila["id"]
-        session["usuario"] = fila["usuario"]
-        return redirect(url_for("menu"))
-
-    flash("Usuario o contraseña incorrectos")
-    return redirect(url_for("login"))
 
 
 @app.route("/registro", methods=["GET", "POST"])
