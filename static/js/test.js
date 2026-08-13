@@ -8,6 +8,7 @@ const marcadorTiempo = document.getElementById("tiempo-restante");
 const barraProgreso = document.getElementById("barra-progreso");
 const pantallaResultado = document.getElementById("pantalla-resultado");
 const valorWpm = document.getElementById("valor-wpm");
+const imagenResultado = document.getElementById("imagen-resultado");
 const indicadorRacha = document.getElementById("indicador-racha");
 const contadorRacha = document.getElementById("contador-racha");
 
@@ -96,6 +97,23 @@ function iniciarCuentaRegresiva() {
     }, 1000);
 }
 
+function mostrarImagenResultado(palabrasPorMinuto) {
+    let src = imagenResultado.dataset.liebre;
+    let etiqueta = "Liebre";
+
+    if (palabrasPorMinuto < 30) {
+        src = imagenResultado.dataset.caracol;
+        etiqueta = "Caracol";
+    } else if (palabrasPorMinuto > 60) {
+        src = imagenResultado.dataset.chita;
+        etiqueta = "Chita";
+    }
+
+    imagenResultado.src = src;
+    imagenResultado.alt = etiqueta;
+    imagenResultado.hidden = false;
+}
+
 function finalizarPrueba() {
     if (pruebaTerminada) {
         return;
@@ -110,6 +128,7 @@ function finalizarPrueba() {
     const palabrasPorMinuto = Math.round(palabrasCorrectas / minutos);
 
     valorWpm.textContent = palabrasPorMinuto;
+    mostrarImagenResultado(palabrasPorMinuto);
     pantallaResultado.classList.add("visible");
 
     fetch("/guardar_resultado", {
