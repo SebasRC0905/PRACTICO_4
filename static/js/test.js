@@ -62,7 +62,6 @@ function marcarPalabraActual() {
     const elementoActual = document.querySelector(`.palabra[data-indice="${indiceActual}"]`);
     if (elementoActual) {
         elementoActual.classList.add("actual");
-        elementoActual.scrollIntoView({ block: "center", behavior: "smooth" });
     }
 }
 

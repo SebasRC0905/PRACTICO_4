@@ -388,11 +388,14 @@ h1 {
 .texto-prueba {
     font-family: var(--fuente-mono);
     font-size: 19px;
-    line-height: 2;
+    line-height: 1.8;
     color: var(--texto-tenue);
-    white-space: nowrap;
-    overflow-x: auto;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow: hidden;
     margin: 0;
+    text-align: center;
+    max-width: 100%;
 }
 
 .texto-prueba .palabra {
